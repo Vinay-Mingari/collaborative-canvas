@@ -1,4 +1,4 @@
-import { socket, myUser } from "./websocket.js";
+import { socket, ROOM } from "./websocket.js";
 
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -10,18 +10,7 @@ let drawing = false;
 let lastX = 0;
 let lastY = 0;
 
-function drawLine(x1, y1, x2, y2, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.lineCap = "round";
-
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
-  ctx.stroke();
-}
-
-canvas.addEventListener("mousedown", (e) => {
+canvas.addEventListener("mousedown", e => {
   drawing = true;
   lastX = e.clientX;
   lastY = e.clientY;
@@ -29,40 +18,38 @@ canvas.addEventListener("mousedown", (e) => {
 
 canvas.addEventListener("mouseup", () => drawing = false);
 canvas.addEventListener("mouseleave", () => drawing = false);
+canvas.addEventListener("mousemove", draw);
 
-canvas.addEventListener("mousemove", (e) => {
-  if (!drawing || !myUser) return;
+function draw(e) {
+  if (!drawing) return;
 
   const x = e.clientX;
   const y = e.clientY;
 
-  drawLine(lastX, lastY, x, y, myUser.color);
+  drawLine(lastX, lastY, x, y);
 
   socket.emit("draw", {
+    room: ROOM,
     x1: lastX,
     y1: lastY,
     x2: x,
-    y2: y,
-    color: myUser.color
+    y2: y
   });
 
   lastX = x;
   lastY = y;
-});
+}
 
-socket.on("draw", (data) => {
-  drawLine(data.x1, data.y1, data.x2, data.y2, data.color);
-});
+function drawLine(x1, y1, x2, y2) {
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 2;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
 
-socket.on("sync", (ops) => {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ops.forEach(op => {
-    drawLine(op.x1, op.y1, op.x2, op.y2, op.color);
-  });
-});
-
-window.addEventListener("keydown", (e) => {
-  if (e.ctrlKey && e.key === "z") {
-    socket.emit("undo");
-  }
+socket.on("draw", ({ x1, y1, x2, y2 }) => {
+  drawLine(x1, y1, x2, y2);
 });
